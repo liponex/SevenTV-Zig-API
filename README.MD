@@ -3,9 +3,34 @@ This project was done to make it easier to retrieve 7TV Emoji data for use in ot
 It is not affiliated with 7TV in any way.
 ---
 ## Usage
+
+build.zig.zon
+```zig
+.dependencies = .{
+    // ...
+    .seventv_zig_api = .{
+        .url = "https://github.com/liponex/SevenTV-Zig-API/archive/refs/heads/main.tar.gz",
+        .hash = "12200d756c07d23aefaab259c575d4e888f2dd92411182490538b9935f704645afc3",
+    },
+    // ...
+},
+```
+
+build.zig
+```zig
+const seventv = b.dependency("seventv_zig_api", .{
+    .target = target,
+    .optimize = optimize,
+});
+exe.linkLibrary(seventv.artifact("seventv_zig_api"));
+exe.addModule("seventv_zig_api", seventv.module("seventv_zig_api"));
+b.installArtifact(seventv.artifact("seventv_zig_api"));
+```
+
+main.zig
 ```zig
 const std = @import("std");
-const seventv = @import("seventv-zig-api");
+const seventv = @import("seventv_zig_api");
 
 pub fn main() !void {
     // Initialize the allocator

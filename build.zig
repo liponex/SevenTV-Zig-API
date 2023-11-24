@@ -4,8 +4,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    _ = b.addModule("seventv_zig_api", .{
+        .source_file = .{ .path = "src/main.zig" },
+    });
+
     const lib = b.addStaticLibrary(.{
-        .name = "SevenTV-Zig-API",
+        .name = "seventv_zig_api",
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
