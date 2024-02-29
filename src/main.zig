@@ -12,24 +12,26 @@ pub const SevenTV = struct {
     allocator: std.mem.Allocator,
     limit: u32 = 12,
     page: u32 = 1,
-    case_sensitive: ?bool = null,
-    animated: ?bool = null,
-    exact_match: ?bool = null,
+    case_sensitive: ?bool = true,
+    animated: ?bool = true,
+    exact_match: ?bool = true,
 
     pub fn searchByName(self: SevenTV, name: [:0] const u8) !Emoji {
         var client = std.http.Client { .allocator = self.allocator };
         defer client.deinit();
 
-        var endpoint = "https://7tv.io/v3/gql";
+        const endpoint = "https://7tv.io/v3/gql";
         const uri = try std.Uri.parse(endpoint);
 
-        var headers = std.http.Headers{ .allocator = self.allocator };
-        defer headers.deinit();
-        try headers.append("Content-Type", "application/json");
+        const headers = std.http.Client.Request.Headers{
+            .content_type = std.http.Client.Request.Headers.Value {
+                .override = "application/json",
+            },
+        };
 
-        var query = "query SearchEmotes($query: String!, $page: Int, $sort: Sort, $limit: Int, $filter: EmoteSearchFilter) {\n emotes(query: $query, page: $page, sort: $sort, limit: $limit, filter: $filter) {\nitems{\n id\n name\n owner{\n username\n }\n host{\n url}}\n}\n}";
+        const query = @embedFile("gql/searchEmotes.graphql");
 
-        var payload = .{
+        const payload = .{
             .operationName = "SearchEmotes",
             .variables = .{
                 .query = name,
@@ -45,22 +47,26 @@ pub const SevenTV = struct {
                     .case_sensitive = self.case_sensitive,
                     .ignore_tags = false,
                     .zero_width = false,
-                    // .animated = self.animated,
-                    .animated = true,
+                    .animated = self.animated,
                     .aspect_ratio = ""
                 },
             },
             .query = query,
         };
 
-        var req = try client.request(.POST, uri, headers, .{});
+        const server_header_buffer: []u8 = try self.allocator.alloc(u8, 8*1024*4);
+
+        var req = try client.open(.POST, uri, std.http.Client.RequestOptions{
+            .server_header_buffer = server_header_buffer,
+            .headers = headers,
+        });
         defer req.deinit();
 
         req.transfer_encoding = .chunked;
 
-        try req.start(.{});
+        try req.send(.{});
 
-        var payload_stringified = try std.json.stringifyAlloc(self.allocator, payload, .{});
+        const payload_stringified = try std.json.stringifyAlloc(self.allocator, payload, .{});
         try req.writer().writeAll(payload_stringified);
 
         try req.finish();
@@ -72,7 +78,8 @@ pub const SevenTV = struct {
         if (response.status != std.http.Status.ok) {
             return error.NoEmojiFound;
         }
-        const response_body = try req.reader().readAllAlloc(self.allocator, 8192);
+
+        const response_body = try req.reader().readAllAlloc(self.allocator, 8*1024*4);
 
         const emojiResponse = struct {
             data: struct {
@@ -95,15 +102,25 @@ pub const SevenTV = struct {
             emojiResponse,
             self.allocator,
             response_body,
-            .{},
+            .{
+                .ignore_unknown_fields = true,
+            },
         );
         defer parsed.deinit();
 
+        var flag: usize = 0;
+        for (parsed.value.data.emotes.items, 0..) |value, i| {
+            if (std.mem.eql(u8, value.name, name)) {
+                flag = i;
+                break;
+            }
+        }
+        
         const result = Emoji {
-            .id = parsed.value.data.emotes.items[0].id,
-            .name = parsed.value.data.emotes.items[0].name,
-            .owner_username = parsed.value.data.emotes.items[0].owner.username,
-            .host_url = parsed.value.data.emotes.items[0].host.url,
+            .id = parsed.value.data.emotes.items[flag].id,
+            .name = parsed.value.data.emotes.items[flag].name,
+            .owner_username = parsed.value.data.emotes.items[flag].owner.username,
+            .host_url = parsed.value.data.emotes.items[flag].host.url,
         };
 
         // std.log.info(
@@ -127,8 +144,6 @@ test "Search for 7TV emoji by name" {
 
     var stv = SevenTV{
         .allocator = allocator,
-        .case_sensitive = true,
-        .exact_match = true,
     };
 
     const emoji_name: [*c]const u8 = "catJAM";
