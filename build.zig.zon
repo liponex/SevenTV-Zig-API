@@ -1,6 +1,6 @@
 .{
     .name = "seventv_zig_api",
-    .version = "0.0.2",
+    .version = "0.0.3",
     .author = "liponex",
     .description = "An unofficial Zig library for retrieving 7TV Emoji data",
     .license = "LGPL-3.0-or-later",

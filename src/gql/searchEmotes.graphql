@@ -1,0 +1,37 @@
+query SearchEmotes($query: String!, $page: Int, $sort: Sort, $limit: Int, $filter: EmoteSearchFilter) {
+    emotes(query: $query, page: $page, sort: $sort, limit: $limit, filter: $filter) {
+        count
+        items {
+            id
+            name
+            state
+            trending
+            owner {
+                id
+                username
+                display_name
+                style {
+                    color
+                    paint_id
+                    __typename
+                }
+                __typename
+            }
+            flags
+            host {
+                url
+                files {
+                    name
+                    format
+                    width
+                    height
+                    __typename
+                }
+                __typename
+            }
+            __typename
+        }
+        __typename
+    }
+    __typename
+}
