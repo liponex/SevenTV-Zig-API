@@ -16,7 +16,7 @@ pub const SevenTV = struct {
     animated: ?bool = true,
     exact_match: ?bool = true,
 
-    pub fn searchByName(self: SevenTV, name: [:0] const u8) !Emoji {
+    pub fn searchByName(self: SevenTV, name: [] const u8) !Emoji {
         var client = std.http.Client { .allocator = self.allocator };
         defer client.deinit();
 
